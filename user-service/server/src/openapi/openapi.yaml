@@ -1,0 +1,687 @@
+openapi: 3.1.0
+info:
+  title: Auth API
+  version: 1.0.0
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: |
+        Registers a new user to the database. If the email already exists but is not verified,
+        a new verification code is sent. Otherwise, a new user is created and a verification email is sent.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - firstName
+                - lastName
+                - email
+                - username
+              properties:
+                firstName:
+                  type: string
+                  minLength: 1
+                lastName:
+                  type: string
+                  minLength: 1
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                  minLength: 5
+                  maxLength: 20
+                password:
+                  type: string
+                  minLength: 6
+                  pattern: "^(?=.*[A-Za-z])(?=.*\\d).{6,}$"
+                  description: Required if authType is "site"
+                bio:
+                  type: string
+                  maxLength: 100
+                image:
+                  type: string
+                address:
+                  type: string
+                phoneNumber:
+                  type: string
+                  pattern: "^\\+?\\d{10,15}$"
+                country:
+                  type: string
+                  enum: [Macedonia, Albania, Kosovo]
+                userType:
+                  type: string
+                  enum: [basic, premium, admin]  # update based on actual values of UserType
+                authType:
+                  type: string
+                  enum: [site, google]  # update based on actual values of AuthType
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: created
+                  message:
+                    type: string
+                    example: User registered successfully. Please verify your email.
+                  userId:
+                    type: string
+                    example: 64c47a8a3b6d2d001e9d8b93
+        '200':
+          description: Email exists but not verified, code resent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: resent
+                  message:
+                    type: string
+                    example: Account exists but not verified. Verification code resent.
+                  userId:
+                    type: string
+                    example: 64c47a8a3b6d2d001e9d8b93
+        '409':
+          description: Email or username already in use
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 409
+                  message:
+                    type: string
+                    enum:
+                      - Email already in use
+                      - Username already in use
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/login:
+    post:
+      summary: Login user
+      description: Logs in a registered user using email or username and password. Returns an access token and refresh token.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - identifier
+                - password
+              properties:
+                identifier:
+                  type: string
+                  description: Email or username
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  pattern: "^(?=.*[A-Za-z])(?=.*\\d)"
+                  description: Must include at least one letter and one number
+      responses:
+        "200":
+          description: User successfully logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    description: User object
+                    example:
+                      _id: 64c47a8a3b6d2d001e9d8b93
+                      email: user@example.com
+                      username: johndoe
+                      firstName: John
+                      lastName: Doe
+                  accessToken:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 401
+                  message:
+                    type: string
+                    enum:
+                      - Invalid email or password.
+        "403":
+          description: User is either not verified or registered with Google
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 403
+                  message:
+                    type: string
+                    enum:
+                      - User account is not verified.
+                      - This account was registered with Google. Please log in using Google.
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: User not found
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/logout:
+    post:
+      summary: Logout user
+      description: Clears the refresh token cookie and logs the user out.
+      tags:
+        - Auth
+      responses:
+        "200":
+          description: User successfully logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/forgotPassword:
+    post:
+      summary: Forgot password
+      description: |
+        Triggers the password reset process by sending a reset link to the user's email.
+        Returns a generic message regardless of whether the email exists or is verified.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - callbackUrl
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                callbackUrl:
+                  type: string
+                  format: uri
+                  example: https://your-frontend.com/reset-password
+                  description: Must start with http:// or https://
+      responses:
+        "200":
+          description: Always returns a generic response for security reasons
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: If an account with this email exists, a password reset link has been sent.
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/resetPassword:
+    post:
+      summary: Reset user password
+      description: |
+        Resets the user's password using a token sent to their email.
+        If the token and email match, the password is updated.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - token
+                - newPassword
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                token:
+                  type: string
+                  description: Reset token sent via email
+                  example: 482940
+                newPassword:
+                  type: string
+                  minLength: 6
+                  pattern: "^(?=.*[A-Za-z])(?=.*\\d)"
+                  description: Must include at least one letter and one number
+                  example: myNewPass123
+      responses:
+        "200":
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Password has been reset successfully
+        "404":
+          description: Invalid email or token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: User not found
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/resend-verification:
+    post:
+      summary: Resend email verification code
+      description: |
+        Resends the email verification code to the user. Fails if user doesn't exist or is already verified.
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+      responses:
+        "200":
+          description: Verification code resent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Verification code resent to your email.
+        "400":
+          description: User is already verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: User is already verified
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: User not found
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/verifyEmail/{userId}:
+    post:
+      summary: Verify user email
+      description: |
+        Verifies the user's email using a verification code and returns tokens if successful.
+      tags:
+        - Auth
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user to verify
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  example: 934172
+      responses:
+        "200":
+          description: Email successfully verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    example:
+                      _id: 64c47a8a3b6d2d001e9d8b93
+                      email: user@example.com
+                      username: johndoe
+                  accessToken:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "400":
+          description: Invalid or expired verification code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: Invalid or expired verification code
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Uses a refresh token from cookies to issue a new access token and refresh token.
+      tags:
+        - Auth
+      # No requestBody needed; the refresh token is expected in an HTTP-only cookie named `refreshToken`.
+      responses:
+        "200":
+          description: New access token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        "404":
+          description: User not found or invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 404
+                  message:
+                    type: string
+                    example: User not found
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+
+  /auth/google:
+    get:
+      summary: Start Google OAuth login
+      description: |
+        Redirects the user to Google's OAuth 2.0 login page to authenticate with Google.
+      tags:
+        - Auth
+      responses:
+        '302':
+          description: Redirect to Google OAuth
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+  /auth/google/callback:
+    get:
+      summary: Google OAuth callback
+      description: |
+        Handles the callback after successful Google authentication.
+        Issues access and refresh tokens, then redirects to the client app with the access token in the URL.
+      tags:
+        - Auth
+      responses:
+        '302':
+          description: |
+            Redirects to the client app with the access token on success, or with an error on failure.
+          headers:
+            Location:
+              schema:
+                type: string
+              description: |
+                Redirect URL. On success: `${clientSuccessRedirect}?token=<accessToken>`.  
+                On failure: `${clientFailureRedirect}?error=oauth_failed`
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
+
+
+  /auth/verify:
+    get:
+      summary: Verify authenticated user
+      description: |
+        Verifies the currently authenticated user based on the provided JWT.
+        Returns user info if the token is valid.
+      tags:
+        - Auth
+      security:
+        - bearerAuth: []  # Reference to JWT security scheme (you define this in `components.securitySchemes`)
+      responses:
+        '200':
+          description: Authenticated user info returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Authenticated
+                  user:
+                    type: object
+                    example:
+                      _id: 64c47a8a3b6d2d001e9d8b93
+                      email: user@example.com
+                      username: johndoe
+                      isVerified: true
+        '401':
+          description: Invalid or missing token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 401
+                  message:
+                    type: string
+                    example: Unauthorized
+        '500':
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 500
+                  message:
+                    type: string
+                    example: Internal Server Error
