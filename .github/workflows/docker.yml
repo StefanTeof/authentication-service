@@ -3,9 +3,9 @@ name: Build & Push Docker Images
 on:
   push:
     branches: ["main"]
-    tags: ["v*"]          
+    tags: ["v*"]           # tag v1.0.0 to publish :v1.0.0
   pull_request:
-    branches: ["main"]    
+    branches: ["main"]     # PRs build but do NOT push
 
 jobs:
   build-and-push:
