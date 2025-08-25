@@ -11,7 +11,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
-    # Put secrets into env at the job level (allowed)
     env:
       DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
       NEXT_PUBLIC_BASE_URL: http://localhost:4000
@@ -21,14 +20,14 @@ jobs:
       matrix:
         include:
           - name: user-service
-            context: server
-            dockerfile: server/Dockerfile
+            context: user-service/server
+            dockerfile: user-service/server/Dockerfile
             image_name: gamex-user-service
             build_args: |
               NODE_ENV=production
           - name: frontend
-            context: client
-            dockerfile: client/Dockerfile
+            context: user-service/client
+            dockerfile: user-service/client/Dockerfile
             image_name: gamex-frontend
             build_args: |
               NEXT_PUBLIC_BASE_URL=http://localhost:4000
