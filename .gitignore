@@ -60,4 +60,5 @@ dump/
 
 # Optional: next.js cache or others
 .next/
-.cache/
+.cache//kubectl
+/kind
