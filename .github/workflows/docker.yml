@@ -3,47 +3,52 @@ name: Build & Push Docker Images
 on:
   push:
     branches: ["main"]
-    tags: ["v*"]         
+    tags: ["v*"]           # tag v1.0.0 to publish :v1.0.0
   pull_request:
-    branches: ["main"]
+    branches: ["main"]     # PRs build but do NOT push
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
+    env:
+      DOCKERHUB_NAMESPACE: ${{ secrets.DOCKERHUB_USERNAME }}
+      NEXT_PUBLIC_BASE_URL: http://localhost:4000
+      NEXT_PUBLIC_CLIENT_SUCCESS_REDIRECT: http://localhost:3000/homepage
+
     strategy:
       matrix:
         include:
           - name: user-service
-            context: server
-            dockerfile: server/Dockerfile
-            image: ${{ secrets.DOCKERHUB_USERNAME }}/gamex-user-service
-            build-args: |
+            context: user-service/server
+            dockerfile: user-service/server/Dockerfile
+            image_name: gamex-user-service
+            build_args: |
               NODE_ENV=production
           - name: frontend
-            context: client
-            dockerfile: client/Dockerfile
-            image: ${{ secrets.DOCKERHUB_USERNAME }}/gamex-frontend
-            build-args: |
+            context: user-service/client
+            dockerfile: user-service/client/Dockerfile
+            image_name: gamex-frontend
+            build_args: |
               NEXT_PUBLIC_BASE_URL=http://localhost:4000
               NEXT_PUBLIC_CLIENT_SUCCESS_REDIRECT=http://localhost:3000/homepage
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ env.DOCKERHUB_NAMESPACE }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Generate tags/labels
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ matrix.image }}
+          images: ${{ env.DOCKERHUB_NAMESPACE }}/${{ matrix.image_name }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=tag
@@ -57,5 +62,5 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: ${{ matrix.build-args }}
+          build-args: ${{ matrix.build_args }}
           platforms: linux/amd64
