@@ -27,7 +27,6 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
     email: "",
     username: "",
     password: "",
-    userType: "buyer",
     authType: "site" as const,
   });
 
@@ -195,16 +194,6 @@ export default function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
-
-        <Select value={formData.userType} onValueChange={(val) => updateFormData("userType", val)}>
-          <SelectTrigger className="h-12 px-4 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500">
-            <SelectValue placeholder="Select user type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="buyer">Buyer</SelectItem>
-            <SelectItem value="seller">Seller</SelectItem>
-          </SelectContent>
-        </Select>
 
         <Button
           type="submit"
