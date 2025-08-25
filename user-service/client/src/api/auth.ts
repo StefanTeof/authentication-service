@@ -31,8 +31,6 @@ export interface RegisterPayload {
   email: string;
   username: string;
   password: string;
-  /** If you truly allow more values, keep `string`; otherwise tighten to the union */
-  userType: "buyer" | "seller" | (string & {}); // keeps flexibility without widening entire type
   authType: "site" | "google";
 }
 
