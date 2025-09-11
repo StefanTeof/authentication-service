@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: gamex
+spec:
+  selector:
+    app: user-service
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: gamex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: stefanteof/gamex-user-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - secretRef:
+                name: user-service-secrets      # <-- from server/.env
+            - configMapRef:
+                name: user-service-config       # <-- NODE_ENV/PORT/MONGO_URI for K8s
+          readinessProbe:
+            tcpSocket:
+              port: 4000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
