@@ -1,0 +1,12 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: gamex
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80    # Ingress HTTP inside the cluster
+        hostPort: 8080       # → http://localhost:8080 on your host
+        protocol: TCP
+      - containerPort: 443   # Ingress HTTPS inside the cluster
+        hostPort: 8443       # → https://localhost:8443 on your host
+        protocol: TCP

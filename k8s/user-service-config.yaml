@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: gamex
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  MONGO_URI: "mongodb://mongo:27017/gamex-users"
