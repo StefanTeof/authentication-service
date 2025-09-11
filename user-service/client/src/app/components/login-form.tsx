@@ -41,30 +41,32 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
     setInfoMessage(null);
 
     try {
-
       // Ask the browser to save credentials (Chromium + HTTPS or localhost)
       try {
-        if (navigator.credentials && window.PasswordCredential) {
-          const cred = new window.PasswordCredential({
+        if (navigator.credentials && (window as any).PasswordCredential) {
+          const cred = new (window as any).PasswordCredential({
             id: username.trim(),
             password,
             name: username.trim(),
           });
           await navigator.credentials.store?.(cred);
         }
-
       } catch (e) {
         // optional: non-blocking
         console.warn("credentials.store failed:", e);
       }
 
-      // Redirect
-      const to = process.env.NEXT_PUBLIC_CLIENT_SUCCESS_REDIRECT || "/dashboard";
-      if (to.startsWith("http")) {
-        window.location.assign(to);
-      } else {
-        router.replace(to);
-      }
+      // Redirect — resolve relative path against current origin
+      const raw =
+        process.env.NEXT_PUBLIC_CLIENT_SUCCESS_REDIRECT || "/homepage";
+      const to = raw.startsWith("http")
+        ? raw
+        : new URL(
+            raw.startsWith("/") ? raw : `/${raw}`,
+            window.location.origin
+          ).toString();
+
+      window.location.assign(to);
     } catch (err) {
       if (err instanceof ApiError) {
         const body = (err.data ?? null) as ApiErrorBody | string | null;
@@ -231,8 +233,8 @@ export default function LoginForm({ onSwitchToRegister }: LoginFormProps) {
       </Button>
 
       <div className="text-center text-sm">
-      <span className="text-gray-600">Don&apos;t have an account? </span>
-      <button onClick={onSwitchToRegister} className="text-primary hover:text-gray-600 font-semibold cursor-pointer">
+        <span className="text-gray-600">Don&apos;t have an account? </span>
+        <button onClick={onSwitchToRegister} className="text-primary hover:text-gray-600 font-semibold cursor-pointer">
           Create account
         </button>
       </div>
